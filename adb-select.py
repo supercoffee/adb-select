@@ -7,9 +7,6 @@ import os.path
 def get_file_path():
     return os.path.expanduser("~/.adb-select")
 
-def filter_empty_line(line):
-    return len(line) > 0
-
 def map_device_id(line):
     """
     :param line: adb device line
@@ -28,17 +25,21 @@ def write_selection(device_id):
 
 def adb_select():
     output = subprocess.check_output(["adb", "devices", "-l"])
-    lines = filter(filter_empty_line, output.splitlines()[1::])
-    device_ids = map(map_device_id, lines)
-
+    # Must decode byte literal to UTF-8 for proper print formatting
+    lines = [line.decode("utf-8") for line in output.splitlines()[1::] if len(line) > 0]
+    device_ids = [map_device_id(line) for line in lines]
     prompt_items = [format_selection_line(i, line) for i, line in enumerate(lines)]
+    
     for item in prompt_items:
         print(item)
 
     max_item_index = len(prompt_items) -1
     selection = -1
     while selection < 0 or selection > max_item_index:
-        selection = input("Enter selection [0 - %d] >> " % max_item_index)
+        try:
+            selection = int(input("Enter selection [0 - %d] >> " % max_item_index))
+        except ValueError:
+            pass
 
     write_selection(device_ids[selection])
 
